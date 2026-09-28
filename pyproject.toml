@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "notaear"
+version = "0.1.0"
+description = "NotaGen-style ABC patching and sight-singing analysis"
+requires-python = ">=3.10"
+dependencies = ["music21>=9"]
+
+[project.scripts]
+notaear-split = "notaear.abc_patches:main"
+notaear-difficulty = "notaear.difficulty:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
