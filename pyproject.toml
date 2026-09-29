@@ -24,6 +24,8 @@ notaear-train-smoke = "notaear.train_smoke:main"
 notaear-generate = "notaear.generate:main"
 notaear-validate-abc = "notaear.validate_abc:main"
 notaear-build-manifest = "notaear.build_manifest:main"
+notaear-data-info = "notaear.dataset:main"
+notaear-train = "notaear.train:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

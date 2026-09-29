@@ -42,6 +42,9 @@ PYTHONPATH=src python -m notaear.build_manifest \
 `notaear.manifest.choose_variant(record, epoch, seed=...)` 会确定性选择本轮版本；同一
 `score_id` 的多个声部会选择相同目标调。
 
+正式训练应使用 [`DATA_LOADER.md`](DATA_LOADER.md) 中的 `ManifestBatchSampler`；它会
+先计算作品内声部的共同可用调，比逐行调用 `choose_variant` 更严格。
+
 ## v1 筛选和划分规则
 
 1. ABC 必须能被无损小节切分器和 byte tokenizer 往返编码；

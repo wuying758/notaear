@@ -17,8 +17,12 @@ from .abc_patches import AbcPatchError, BarPatch, split_abc
 
 
 _HEADER_FIELD = re.compile(r"(?m)^\s*([KLM]):([^\r\n]+)")
-_KEY_CHANGE = re.compile(r"\[K:([^\]]+)\]|(?m)^[ \t]*K:([^\r\n]+)\r?\n?")
-_METER_CHANGE = re.compile(r"\[M:([^\]]+)\]|(?m)^[ \t]*M:([^\r\n]+)\r?\n?")
+_KEY_CHANGE = re.compile(
+    r"\[K:([^\]]+)\]|^[ \t]*K:([^\r\n]+)\r?\n?", re.MULTILINE
+)
+_METER_CHANGE = re.compile(
+    r"\[M:([^\]]+)\]|^[ \t]*M:([^\r\n]+)\r?\n?", re.MULTILINE
+)
 
 
 @dataclass(frozen=True)

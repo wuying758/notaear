@@ -10,6 +10,7 @@ NotaEar 是与旧 `deepear-main` 隔离的 NotaGen-style 单声部视唱生成�
 - 约 17M 参数的双层因果 Transformer 基线；
 - 可恢复的版本化 checkpoint 与 ABC continuation 推理入口；
 - 作品级去重、无泄漏划分和按 epoch 选调的训练 manifest；
+- 来源加权、作品级同调、分片局部读取和动态 padding 的 PyTorch DataLoader；
 - 五维、无总分的视唱难度特征；
 - 单元测试与真实 `v-yidiao` 抽样入口。
 
@@ -46,6 +47,12 @@ PYTHONPATH=notaear/src python -m notaear.validate_abc path/to/tune.abc
 PYTHONPATH=notaear/src python -m notaear.build_manifest \
   data/handoff-full-2026-09-26/handoff/v-yidiao/score-grade \
   data/notaear-manifests/v-yidiao-v1 --workers 8
+PYTHONPATH=notaear/src python -m notaear.dataset \
+  data/notaear-manifests/v-yidiao-v1/manifest.jsonl \
+  --split train --workers 2 --batches 3
+PYTHONPATH=notaear/src python -m notaear.train \
+  data/notaear-manifests/v-yidiao-v1/manifest.jsonl \
+  --output-dir notaear/out/generator-v1 --device cuda
 ```
 
 `--steps` 表示总目标步数；例如从 step 50 的 checkpoint 继续到 100，应传
@@ -63,6 +70,10 @@ PYTHONPATH=notaear/src python -m notaear.build_manifest \
 模型设计见 [`docs/MODEL.md`](docs/MODEL.md)。
 训练数据 manifest 的字段、筛选边界和复现命令见
 [`docs/DATA_MANIFEST.md`](docs/DATA_MANIFEST.md)。
+正式 Dataset 与 DataLoader 的行为和训练接入方式见
+[`docs/DATA_LOADER.md`](docs/DATA_LOADER.md)。
+正式 GPU 训练、续训和 checkpoint 约定见
+[`docs/TRAINING.md`](docs/TRAINING.md)。
 
 
 Melodia 弱监督难度模型：
