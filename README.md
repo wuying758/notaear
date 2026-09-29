@@ -6,6 +6,10 @@ NotaEar 是与旧 `deepear-main` 隔离的 NotaGen-style 单声部视唱生成�
 
 - 无损 ABC `header + bar patch` 切分；
 - patch 级三连音与内联调号/拍号元数据；
+- UTF-8 byte tokenizer 与固定长度 patch；
+- 约 17M 参数的双层因果 Transformer 基线；
+- 可恢复的版本化 checkpoint 与 ABC continuation 推理入口；
+- 作品级去重、无泄漏划分和按 epoch 选调的训练 manifest；
 - 五维、无总分的视唱难度特征；
 - 单元测试与真实 `v-yidiao` 抽样入口。
 
@@ -26,10 +30,45 @@ v-yidiao JSONL ABC
 
 ```bash
 cd /home/wuyinghao/Desktop/wq
-PYTHONPATH=notaear/src python -m unittest discover -s notaear/tests -v
+PYTHONPATH=notaear/src python -m pytest -q notaear/tests
 PYTHONPATH=notaear/src python -m notaear.abc_patches path/to/tune.abc
 PYTHONPATH=notaear/src python -m notaear.difficulty path/to/tune.abc
+PYTHONPATH=notaear/src python -m notaear.model
+PYTHONPATH=notaear/src python -m notaear.train_smoke path/to/shard.jsonl \
+  --device cuda --checkpoint out/generator-smoke/checkpoint.pt
+PYTHONPATH=notaear/src python -m notaear.train_smoke path/to/shard.jsonl \
+  --device cuda --steps 100 --resume out/generator-smoke/checkpoint.pt
+PYTHONPATH=notaear/src python -m notaear.generate \
+  out/generator-smoke/checkpoint.pt path/to/prompt.abc \
+  --output out/generator-smoke/generated.abc \
+  --validation-report out/generator-smoke/generated.validation.json
+PYTHONPATH=notaear/src python -m notaear.validate_abc path/to/tune.abc
+PYTHONPATH=notaear/src python -m notaear.build_manifest \
+  data/handoff-full-2026-09-26/handoff/v-yidiao/score-grade \
+  data/notaear-manifests/v-yidiao-v1 --workers 8
 ```
 
-指标定义见 [`docs/DIFFICULTY.md`](docs/DIFFICULTY.md)。
+`--steps` 表示总目标步数；例如从 step 50 的 checkpoint 继续到 100，应传
+`--steps 100`。checkpoint 包含模型配置、优化器、训练步数、随机状态和所选数据
+签名；恢复时数据签名不一致会拒绝继续。PyTorch checkpoint 使用 pickle，只加载
+自己训练或可信来源的文件。
 
+当前生成入口已约束 `HEADER/BAR/CONT/DOC_EOS` 转换，并要求输出解码后重新编码
+得到完全相同的 canonical patch 序列。生成预算耗尽时若小节仍未闭合，程序会明确
+失败，不会强塞 EOS。生成后还会检查 music21 解析、单声部、逐小节拍长、三连音
+实际时值、弱起配对和分段调性；默认不写出验证失败结果，可用 `--allow-invalid`
+仅作诊断。非主音终止默认是 warning，只有 `--require-final-tonic` 才会硬拒绝。
+
+指标定义见 [`docs/DIFFICULTY.md`](docs/DIFFICULTY.md)。
+模型设计见 [`docs/MODEL.md`](docs/MODEL.md)。
+训练数据 manifest 的字段、筛选边界和复现命令见
+[`docs/DATA_MANIFEST.md`](docs/DATA_MANIFEST.md)。
+
+
+Melodia 弱监督难度模型：
+
+```bash
+PYTHONPATH=src python -m notaear.train_difficulty train \
+  data/reference_books/raw/melodia/Cole-Lewis-1904-xml.zip \
+  --output out/difficulty-melodia-v0
+```

@@ -9,7 +9,11 @@
 1. `abc_patches.py`：将单曲 ABC 切成 header 与 bar patches，并保证字符级无损拼回。
 2. patch 元数据：终止小节线、三连音记号、行内调号与拍号。
 3. `difficulty.py`：五类原始难度特征，不提前压成总分或 L1–L5。
-4. 单元测试：覆盖注释、和弦、装饰、反复房子、行内字段及三连音。
+4. 双层因果 Transformer、版本化 checkpoint、精确断点续训与生成 CLI。
+5. 生成状态机：约束 `HEADER/BAR/CONT/DOC_EOS` 转换，并验证 canonical 重编码。
+6. 音乐验证器：ABC 解析、单声部、逐小节拍长、三连音、弱起和分段调性检查。
+7. 单元测试：覆盖注释、和弦、装饰、反复房子、行内字段及三连音。
+8. 训练 manifest：按作品精确去重和划分，15 调只保留 locator，并给来源分配采样权重。
 
 ## 目标架构
 
@@ -34,15 +38,16 @@ v-yidiao / 新教材 ABC
 ABC 字符。RWKV 保留为对照基线，不再让模型架构和 tokenizer 同时变化，以免无法
 判断改进来自哪里。
 
-## tokenizer 计划
+## tokenizer v0.1
 
-第一阶段保持字符可逆，不把整套 ABC 过早改写成事件序列：
+第一阶段已经实现 UTF-8 byte tokenizer，不把整套 ABC 过早改写成事件序列：
 
-- patch 序列：`HEADER`、逐小节 `BAR`、`EOS`；
-- patch 内：UTF-8 字符或经过覆盖率审计的词法 token；
-- 特殊字符、装饰音、歌词与未知扩展必须可回退到原始字符；
+- 词表包含 256 个 byte 和 8 个结构 token，共 264 项；
+- patch 序列：`DOC_BOS`、`HEADER`、逐小节 `BAR`、`CONT`、`DOC_EOS`；
+- 每个固定 patch 都有显式类型、`PATCH_END` 和 `PAD`；
+- 特殊字符、中文标题、装饰音、歌词和未知扩展不产生 UNK；
 - `[K:...]`、`[M:...]` 等行内字段不丢失，并随所在小节进入模型；
-- 训练前必须通过 `decode(encode(x)) == x`。
+- 编解码必须通过 `decode(encode(x)) == x`。
 
 是否升级为词法 token，由全语料审计后决定；不能仅凭少量标准 ABC 样例设计词表。
 
@@ -62,7 +67,8 @@ ABC 字符。RWKV 保留为对照基线，不再让模型架构和 tokenizer 同
 2. tokenizer 冻结：在 train/validation/test 划分前固定规则与版本号。
 3. 小规模基线：同一数据分别训练字符 Transformer 与双层 patch Transformer。
 4. 难度学习：优先使用教材章节顺序做排序学习，再用少量人工成对比较校准。
-5. 全量训练：按来源去重、按作品划分，避免同曲移调版本跨集合泄漏。
+5. 全量训练：已完成作品级 manifest；训练 loader 每个 epoch 为同一作品选择同一目标调，
+   避免把 15 个移调副本当作 15 个独立样本。
 
 ## 必须报告的验收指标
 

@@ -7,15 +7,26 @@ name = "notaear"
 version = "0.1.0"
 description = "NotaGen-style ABC patching and sight-singing analysis"
 requires-python = ">=3.10"
-dependencies = ["music21>=9"]
+dependencies = ["joblib>=1.4", "music21>=9", "scikit-learn>=1.5", "torch>=2.1"]
+
+[project.optional-dependencies]
+label = ["verovio>=6.3"]
 
 [project.scripts]
 notaear-split = "notaear.abc_patches:main"
 notaear-difficulty = "notaear.difficulty:main"
+notaear-train-difficulty = "notaear.train_difficulty:main"
+notaear-train-pairwise = "notaear.train_pairwise_difficulty:main"
+notaear-validate-difficulty = "notaear.validate_difficulty:main"
+notaear-label-difficulty = "notaear.label_difficulty:main"
+notaear-model-info = "notaear.model:main"
+notaear-train-smoke = "notaear.train_smoke:main"
+notaear-generate = "notaear.generate:main"
+notaear-validate-abc = "notaear.validate_abc:main"
+notaear-build-manifest = "notaear.build_manifest:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-

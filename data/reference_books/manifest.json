@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "retrieved_at": "2026-09-28T19:14:00+08:00",
+  "raw_root": "data/reference_books/raw",
+  "git_policy": "raw_root is ignored; this manifest is tracked",
+  "collections": [
+    {
+      "id": "melodia_cole_lewis_1904",
+      "title": "Melodia: A Comprehensive Course in Sight-Singing",
+      "official_page": "https://scholarworks.sjsu.edu/oer/1/",
+      "license_status": "public_domain_source_cc_by_sa_4_transcription",
+      "files": [
+        {
+          "path": "melodia/melodia_complete.pdf",
+          "url": "https://www.trainedear.net/source-files/Cole-Lewis-1904.pdf",
+          "bytes": 9224867,
+          "pages": 205,
+          "sha256": "689f6b30690e1ae543108be78a7e296dab19ddfeaa67eaea6090b48efba8652c"
+        },
+        {
+          "path": "melodia/Cole-Lewis-1904-xml.zip",
+          "url": "https://www.trainedear.net/source-files/zip-archives/Cole-Lewis-1904_xml-files.zip",
+          "bytes": 3396424,
+          "musicxml_files": 1511,
+          "sha256": "5f54f748c3c93ecef6b8eb539671f3219a4503ace8ea5df86fd8b79cdb5842fd"
+        }
+      ]
+    },
+    {
+      "id": "gilchrist_330_1891",
+      "title": "330 Exercises for Sight-Singing Classes",
+      "official_page": "https://learnmusictheory.net/singing/gilchrist/index.html",
+      "license_status": "research_only_pending_scan_review",
+      "files": [
+        {
+          "path": "gilchrist/gilchrist_330.pdf",
+          "url": "https://learnmusictheory.net/singing/gilchrist/Gilchrist330_exercises_for_sight_singing_classes.pdf",
+          "bytes": 37202169,
+          "pages": 196,
+          "sha256": "0802523a9b503fcf8db668c964ec672956bb7bddf0f59f0a96355b3354f1c6bd"
+        },
+        {
+          "path": "gilchrist/index.html",
+          "url": "https://learnmusictheory.net/singing/gilchrist/index.html",
+          "bytes": 9784,
+          "sha256": "5eeef2aa1cb0b661457b14b6ea1479ebce5ec1891f84cc19988be78334054299"
+        }
+      ]
+    },
+    {
+      "id": "eyes_and_ears_crowell_2004",
+      "title": "Eyes and Ears: An Anthology of Melodies for Sight-Singing",
+      "official_page": "https://www.lightandmatter.com/sight/sight.html",
+      "license_status": "cc_by_sa_or_gpl_with_per_melody_provenance",
+      "files": [
+        {
+          "path": "eyes_and_ears/eyes_and_ears.pdf",
+          "url": "https://www.lightandmatter.com/sight/sight.pdf",
+          "bytes": 21351293,
+          "pages": 134,
+          "sha256": "4606fcd40d40e32c463d5a1170990f5a33af246e7e26473d9305880363f77299"
+        },
+        {
+          "path": "eyes_and_ears/Crowell-2004-xml.zip",
+          "url": "https://www.trainedear.net/source-files/zip-archives/Crowell-2004_xml-files.zip",
+          "bytes": 911492,
+          "musicxml_files": 427,
+          "sha256": "b9b530d4d599df62d3a5fbd772c93966435a96c9eb4182049cce2ce48bf7402f"
+        }
+      ]
+    },
+    {
+      "id": "concone_school_1897",
+      "title": "The School of Sight-Singing",
+      "official_page": "https://www.trainedear.net/downloads.php",
+      "license_status": "public_domain_source_cc_by_sa_4_transcription",
+      "files": [
+        {
+          "path": "concone/concone_1897.pdf",
+          "url": "https://www.trainedear.net/source-files/Concone-1897.pdf",
+          "bytes": 2285046,
+          "pages": 59,
+          "sha256": "0971e6219804436557e3a3990ad3e17710de94eb45c0fde046949c6cad8b6ed6"
+        },
+        {
+          "path": "concone/Concone-1897-xml.zip",
+          "url": "https://www.trainedear.net/source-files/zip-archives/Concone-1897_xml-files.zip",
+          "bytes": 418862,
+          "musicxml_files": 90,
+          "sha256": "64b066698ad464e1deb0fc549ce2bb9f8ed68eb1a7eba1034332c675c52b6f7a"
+        }
+      ]
+    },
+    {
+      "id": "trained_ear_download_index",
+      "title": "The Trained Ear download index",
+      "official_page": "https://www.trainedear.net/downloads.php",
+      "license_status": "cc_by_sa_4",
+      "files": [
+        {
+          "path": "trained_ear/downloads.html",
+          "url": "https://www.trainedear.net/downloads.php",
+          "bytes": 32481,
+          "sha256": "a59f09265079ef024ecb5a34e68959dd9afbb046de50ed9105dc7f099b433653"
+        }
+      ]
+    }
+  ]
+}
