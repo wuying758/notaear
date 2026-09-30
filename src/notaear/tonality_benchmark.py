@@ -225,16 +225,28 @@ def build_declared_benchmark(
             })
     abcs = _load_source_abcs(records, _data_root(manifest))
     candidates = []
+    exclusions = Counter()
     for row in records:
         abc = abcs.get(row["id"])
         if abc is None:
+            exclusions["missing_locator"] += 1
             continue
-        header_keys = re.findall(r"(?m)^\s*K:\s*([^\r\n]+)", abc)
+        header_matches = list(re.finditer(r"(?m)^\s*K:\s*([^\r\n]+)", abc))
+        header_keys = [match.group(1) for match in header_matches]
         inline_keys = re.findall(r"\[K:([^\]]+)\]", abc)
         if len(header_keys) != 1 or inline_keys:
+            exclusions["multiple_or_inline_keys"] += 1
             continue
         declared = parse_key_field(header_keys[0])
         if declared is None or declared[1] not in REFERENCE_MODES:
+            exclusions["unsupported_declaration"] += 1
+            continue
+        body = abc[header_matches[0].end():]
+        if re.search(r"(?<![A-Za-z])S(?=\s|[A-Ga-g])", body):
+            # Some PDMX conversions emit a bare Segno ``S``. music21 treats it
+            # as a malformed note and silently substitutes C, invalidating an
+            # accuracy benchmark.
+            exclusions["unsupported_bare_navigation_symbol"] += 1
             continue
         candidates.append({
             "schema_version": 1,
@@ -272,6 +284,7 @@ def build_declared_benchmark(
         "eligible_declared_records": len(candidates),
         "selected": len(selected),
         "mode_counts": dict(sorted(mode_counts.items())),
+        "exclusions": dict(sorted(exclusions.items())),
         "seed": seed,
     }
 

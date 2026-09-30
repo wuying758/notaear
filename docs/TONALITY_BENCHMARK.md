@@ -48,6 +48,10 @@ notaear-tonality-benchmark evaluate \
 弱标签，不复制乐谱正文。评估时仍用原调号解析实际音高，但关闭调式分析器的
 `K:` 先验，因此模型不能直接抄标签。
 
+构建器排除多重/内联换调、无法识别的声明，以及会被 music21 静默替换成音符的
+裸导航符号（例如部分 PDMX 中用 `S` 表示 Segno）。这些样本不能通过猜测修复后
+混入准确率统计。
+
 ```bash
 notaear-tonality-benchmark build-declared \
   ../data/notaear-manifests/v-yidiao-v1/manifest.jsonl
@@ -67,13 +71,16 @@ notaear-tonality-benchmark evaluate-declared \
 | --- | ---: | ---: | ---: | ---: |
 | synthetic-v1 core | 336 | 100.0% | 100.0% | 100.0% |
 | synthetic-v1 challenge | 36 | 不适用 | 拒判 66.7% | 错误自信 33.3% |
-| declared-v1 | 149 | 54.4% | 44.3% | 63.6% |
+| declared-v1 | 149 | 40.9% | 43.0% | 40.6% |
 
-`declared-v1` 的主音准确率为 71.1%，调式准确率为 54.4%，mode macro-F1 为
-0.534。分调式联合准确率为：major 64.0%、natural minor 62.0%、Dorian
-35.4%、Phrygian 100%（但只有 1 条，不能据此概括）。
+排除 30 条含裸 `S` 导航符号、会被 music21 静默替换音高的候选后，
+`declared-v1` 的主音准确率为 63.8%，调式准确率为 42.3%，mode macro-F1 为
+0.460。分调式联合准确率为：major 36.0%、natural minor 46.0%、Dorian
+39.6%、Phrygian 100%（但只有 1 条，不能据此概括）。高置信子集没有比总体更准，
+说明当前启发式置信度尚未在真实旋律上校准。
 
 因此当前分析器能可靠处理证据完整的理论材料，但真实短旋律中调式旋转与缺失特征音
-仍是主要失败点，尤其 Dorian 容易与 natural minor、Shang、major 和 Mixolydian
-混淆。下一步不是继续调 synthetic 模板，而是人工复核 declared-v1，并补充当前完全
-缺失的 Mixolydian、五声调式及和声/旋律小调真实谱例。
+仍是主要失败点；Dorian 常与 Shang、major 和 natural minor 混淆，major 与
+Mixolydian/五声候选也经常混淆。下一步不是继续调 synthetic 模板或移动阈值，而是
+人工复核 declared-v1，并补充当前完全缺失的 Mixolydian、五声调式及和声/旋律
+小调真实谱例。
