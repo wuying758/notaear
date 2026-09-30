@@ -18,6 +18,16 @@ class TonalityTests(unittest.TestCase):
             report["dimensions"]["tonal_language"]["chromatic_note_rate"], 0.0
         )
 
+    def test_declared_key_can_be_hidden_for_independent_evaluation(self):
+        abc = (
+            "X:1\nM:4/4\nL:1/8\nK:Ddor\n"
+            "D2 E2 F2 G2 | A2 B2 c2 d2 | d2 c2 B2 A2 | G2 F2 E2 D2 |]\n"
+        )
+        report = analyze_abc(abc, use_declared_tonality=False).tonality
+        self.assertNotEqual(report["status"], "declared")
+        self.assertEqual((report["primary"]["tonic"], report["primary"]["mode"]),
+                         ("D", "dorian"))
+
     def test_minor_variants_use_pitch_and_direction_evidence(self):
         harmonic = (
             "X:1\nM:4/4\nL:1/8\nK:Am\n"

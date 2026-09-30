@@ -68,6 +68,8 @@ PYTHONPATH=notaear/src python -m notaear.train \
 仅作诊断。非主音终止默认是 warning，只有 `--require-final-tonic` 才会硬拒绝。
 
 指标定义见 [`docs/DIFFICULTY.md`](docs/DIFFICULTY.md)。
+调式识别的版本化测试集与指标见
+[`docs/TONALITY_BENCHMARK.md`](docs/TONALITY_BENCHMARK.md)。
 模型设计见 [`docs/MODEL.md`](docs/MODEL.md)。
 训练数据 manifest 的字段、筛选边界和复现命令见
 [`docs/DATA_MANIFEST.md`](docs/DATA_MANIFEST.md)。

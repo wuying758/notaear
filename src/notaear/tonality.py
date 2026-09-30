@@ -303,13 +303,14 @@ def _merge_segments(segments: list[TonalitySegment]) -> list[TonalitySegment]:
 
 def analyze_tonality(
     events: Iterable[TonalEvent], abc: str, bar_count: int | None = None,
+    *, use_declared_key: bool = True,
 ) -> TonalityReport:
     """Analyse global and local tonal organisation of a monophonic ABC tune."""
     event_list = list(events)
     document = split_abc(abc)
     bars = bar_count if bar_count is not None else len(document.bars)
     bars = max(bars, max((event.bar + 1 for event in event_list), default=0))
-    declarations = _declared_keys(abc, document)
+    declarations = _declared_keys(abc, document) if use_declared_key else []
     initial = declarations[0][1] if declarations and declarations[0][0] == 0 else None
     candidates, confidence, status, global_out_rate = _rank_candidates(event_list, initial)
 

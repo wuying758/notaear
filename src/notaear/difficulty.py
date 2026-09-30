@@ -143,7 +143,7 @@ def _music21_compatibility_copy(abc: str) -> tuple[str, tuple[str, ...]]:
     return repaired_meter, tuple(dict.fromkeys(repairs))
 
 
-def analyze_abc(abc: str) -> DifficultyReport:
+def analyze_abc(abc: str, *, use_declared_tonality: bool = True) -> DifficultyReport:
     """Return five groups of raw features for one cleaned, single-voice ABC tune."""
     document = split_abc(abc)
     warnings: list[str] = []
@@ -260,7 +260,12 @@ def analyze_abc(abc: str) -> DifficultyReport:
     key_signatures = list(part.recurse().getElementsByClass(key.KeySignature))
     first_key = key_objects[0] if key_objects else None
     first_signature = key_signatures[0] if key_signatures else first_key
-    tonality = analyze_tonality(tonal_events, abc, len(measures))
+    tonality = analyze_tonality(
+        tonal_events,
+        abc,
+        len(measures),
+        use_declared_key=use_declared_tonality,
+    )
     fallback_scale = (
         {pitch.pitchClass for pitch in first_key.getScale().getPitches()}
         if first_key is not None else set()
