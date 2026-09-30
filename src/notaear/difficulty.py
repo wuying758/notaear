@@ -19,13 +19,20 @@ from statistics import mean
 from music21 import chord, converter, key, meter, note, stream
 
 from .abc_patches import split_abc
+from .tonality import (
+    TonalEvent,
+    analyze_tonality,
+    parse_key_field,
+    scale_pitch_classes,
+)
 
 
 @dataclass(frozen=True)
 class DifficultyReport:
     dimensions: dict[str, dict[str, float | int | str | bool | None]]
+    tonality: dict | None = None
     warnings: tuple[str, ...] = ()
-    schema_version: int = 1
+    schema_version: int = 2
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -78,20 +85,95 @@ def _motif_repetition_rate(pitches: list[int], order: int = 3) -> float:
     return _rate(repeated, len(motifs))
 
 
+def _music21_compatibility_copy(abc: str) -> tuple[str, tuple[str, ...]]:
+    """Repair two known legacy forms in a private music21 parse copy."""
+    repairs: list[str] = []
+    output: list[str] = []
+    saw_key = False
+    for line in abc.splitlines(keepends=True):
+        stripped = line.lstrip("\ufeff \t")
+        if not saw_key and stripped.startswith("K:"):
+            saw_key = True
+        if (not saw_key and stripped.strip() and not stripped.startswith("%") and
+                not re.match(r"^[A-Za-z+]:", stripped)):
+            output.append("% notaear ignored legacy header text: " + line)
+            repairs.append("bare_header_text")
+        else:
+            output.append(line)
+    repaired = "".join(output)
+
+    # music21 accepts some extended K: strings while silently applying the
+    # wrong major key signature. Map only the parsing copy to the parent key;
+    # tonality.py still reads the original declaration and retains its mode.
+    def compatible_key(value: str) -> str | None:
+        parsed = parse_key_field(value)
+        if parsed is None:
+            return None
+        tonic, mode = parsed
+        names = ("C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+        if mode in {"harmonic_minor", "melodic_minor"}:
+            return names[tonic] + "m"
+        parent_offsets = {"gong": 0, "shang": -2, "jue": -4, "zhi": -7, "yu": -9,
+                          "locrian": 1}
+        if mode in parent_offsets:
+            return names[(tonic + parent_offsets[mode]) % 12]
+        return None
+
+    def replace_line_key(match: re.Match) -> str:
+        replacement = compatible_key(match.group(2))
+        if replacement is None:
+            return match.group(0)
+        repairs.append("extended_key_signature")
+        return match.group(1) + replacement
+
+    def replace_inline_key(match: re.Match) -> str:
+        replacement = compatible_key(match.group(1))
+        if replacement is None:
+            return match.group(0)
+        repairs.append("extended_key_signature")
+        return f"[K:{replacement}]"
+
+    repaired = re.sub(r"(?m)^(\s*K:\s*)([^\r\n]+)$", replace_line_key, repaired)
+    repaired = re.sub(r"\[K:([^\]]+)\]", replace_inline_key, repaired)
+    repaired_meter = re.sub(
+        r"(\|)M:(C\||C|none|\d+/\d+)", r"\1[M:\2]", repaired
+    )
+    if repaired_meter != repaired:
+        repairs.append("bare_inline_meter")
+    return repaired_meter, tuple(dict.fromkeys(repairs))
+
+
 def analyze_abc(abc: str) -> DifficultyReport:
     """Return five groups of raw features for one cleaned, single-voice ABC tune."""
     document = split_abc(abc)
     warnings: list[str] = []
+    compatibility_abc, repairs = _music21_compatibility_copy(abc)
     try:
-        score = converter.parseData(abc, format="abc")
+        score = converter.parseData(compatibility_abc, format="abc")
     except Exception as exc:  # music21 errors are not stable across versions
-        raise ValueError(f"ABC could not be parsed for difficulty analysis: {exc}") from exc
+        raise ValueError(
+            f"ABC could not be parsed for difficulty analysis: {exc}"
+        ) from exc
+    if repairs:
+        if "bare_header_text" in repairs:
+            warnings.append(
+                "music21 解析副本已忽略 K: 前的旧式裸标题文本；原始 ABC 未修改"
+            )
+        if "bare_inline_meter" in repairs:
+            warnings.append(
+                "music21 解析副本已将旧式裸内联 M: 字段规范为 [M:...]；原始 ABC 未修改"
+            )
+        if "extended_key_signature" in repairs:
+            warnings.append(
+                "music21 解析副本已将扩展调式 K: 映射到对应母调调号；原始调式声明未修改"
+            )
     part = _first_part(score)
 
     pitches: list[int] = []
     durations: list[Fraction] = []
     note_durations: list[Fraction] = []
     attacks: list[tuple[int, Fraction, Fraction, Fraction]] = []
+    tonal_events: list[TonalEvent] = []
     rest_count = chord_count = dotted_count = tuplet_note_count = tie_count = 0
     current_ts = next(iter(part.recurse().getElementsByClass(meter.TimeSignature)), None)
     measures = list(part.getElementsByClass(stream.Measure))
@@ -142,6 +224,12 @@ def analyze_abc(abc: str) -> DifficultyReport:
             tuplet_note_count += int(has_tuplet)
             onset = _fraction(element.offset)
             attacks.append((bar_index, onset, duration, beat))
+            tonal_events.append(TonalEvent(
+                midi=representative,
+                duration=float(duration),
+                bar=bar_index,
+                beat_strength=float(getattr(element, "beatStrength", 0.5) or 0.5),
+            ))
     if running_notes:
         phrase_notes.append(running_notes)
         phrase_quarters.append(running_quarters)
@@ -172,11 +260,26 @@ def analyze_abc(abc: str) -> DifficultyReport:
     key_signatures = list(part.recurse().getElementsByClass(key.KeySignature))
     first_key = key_objects[0] if key_objects else None
     first_signature = key_signatures[0] if key_signatures else first_key
-    scale_pcs = (
+    tonality = analyze_tonality(tonal_events, abc, len(measures))
+    fallback_scale = (
         {pitch.pitchClass for pitch in first_key.getScale().getPitches()}
         if first_key is not None else set()
     )
-    chromatic = sum(pitch % 12 not in scale_pcs for pitch in pitches) if scale_pcs else 0
+    segment_scales: list[tuple[int, int, frozenset[int]]] = []
+    for segment in tonality.segments:
+        if segment.primary is not None and segment.status in {"confident", "declared"}:
+            segment_scales.append((
+                segment.start_bar - 1,
+                segment.end_bar,
+                scale_pitch_classes(segment.primary.tonic_pc, segment.primary.mode),
+            ))
+    chromatic = 0
+    for event in tonal_events:
+        local_scale = next(
+            (scale for start, end, scale in segment_scales if start <= event.bar < end),
+            fallback_scale,
+        )
+        chromatic += int(bool(local_scale) and event.midi % 12 not in local_scale)
     final_is_tonic = (
         pitches[-1] % 12 == first_key.tonic.pitchClass if first_key is not None else None
     )
@@ -188,7 +291,9 @@ def analyze_abc(abc: str) -> DifficultyReport:
     repeats = len(re.findall(r"\|:|:\|", abc))
     voltas = len(re.findall(r"(?:\[|\|)[1-9]", abc))
     key_fields = re.findall(r"(?m)^K:[^\n\r]*|\[K:[^\]]+\]", abc)
-    meter_fields = re.findall(r"(?m)^M:[^\n\r]*|\[M:[^\]]+\]", abc)
+    meter_fields = re.findall(
+        r"(?m)^M:[^\n\r]*|\[M:[^\]]+\]|\|M:(?:C\||C|none|\d+/\d+)", abc
+    )
     event_count = len(durations)
     note_count = len(pitches)
     bar_count = len(document.bars)
@@ -196,6 +301,7 @@ def analyze_abc(abc: str) -> DifficultyReport:
     tessitura_high = _quantile(pitches, 0.90)
     if chord_count:
         warnings.append("逻辑声部含和弦；旋律音程暂以和弦最高音计算")
+    warnings.extend(tonality.warnings)
     warnings.append("这些是未校准原始指标，不是考试等级或总难度分数")
 
     dimensions = {
@@ -207,6 +313,11 @@ def analyze_abc(abc: str) -> DifficultyReport:
             "chromatic_note_rate": _rate(chromatic, note_count),
             "distinct_pitch_classes": len({pitch % 12 for pitch in pitches}),
             "final_is_tonic": final_is_tonic,
+            "inferred_tonic": tonality.primary.tonic if tonality.primary else None,
+            "inferred_mode": tonality.primary.mode if tonality.primary else None,
+            "mode_status": tonality.status,
+            "mode_confidence": tonality.confidence,
+            "inferred_modulation_count": tonality.modulation_count,
         },
         "melodic_motion": {
             "lowest_midi": min(pitches),
@@ -256,7 +367,11 @@ def analyze_abc(abc: str) -> DifficultyReport:
             "tie_attack_rate": _rate(tie_count, note_count + tie_count),
         },
     }
-    return DifficultyReport(dimensions=dimensions, warnings=tuple(warnings))
+    return DifficultyReport(
+        dimensions=dimensions,
+        tonality=tonality.to_dict(),
+        warnings=tuple(warnings),
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -270,4 +385,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

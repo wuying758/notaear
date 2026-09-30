@@ -12,7 +12,7 @@ import csv
 import hashlib
 import json
 import math
-import math
+import platform
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -26,6 +26,7 @@ from zipfile import ZipFile
 
 
 STAGE_SERIES = (1, 3, 5, 7, 9)
+PUBLIC_LEVELS = ("L1", "L2", "L3", "L4", "L5")
 FILENAME_RE = re.compile(r"_(\d+)-(\d+)-(\d+)(?:-(\d+))?\.xml$")
 PITCH_CLASS = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 
@@ -407,9 +408,31 @@ def score_dimensions(features: dict[str, float], calibration: dict[str, list[flo
             for dimension, names in DIMENSION_FEATURES.items()}
 
 
+def public_level(probabilities) -> dict[str, Any]:
+    """Map the five ordered latent stages to the stable public L1--L5 API."""
+    values = [float(value) for value in probabilities]
+    if len(values) != len(PUBLIC_LEVELS):
+        raise ValueError("public difficulty requires exactly five stage probabilities")
+    ranking = sorted(range(len(values)), key=values.__getitem__, reverse=True)
+    best, second = ranking[:2]
+    confidence = values[best]
+    gap = confidence - values[second]
+    return {
+        "level": PUBLIC_LEVELS[best],
+        "confidence": round(confidence, 6),
+        "confidence_calibrated": False,
+        "borderline": confidence < 0.60 or gap < 0.15,
+        "alternative": PUBLIC_LEVELS[second],
+        "level_support": {
+            level: round(value, 6) for level, value in zip(PUBLIC_LEVELS, values)
+        },
+    }
+
+
 def train(zip_path: Path, output_dir: Path, folds: int, trees: int, seed: int) -> dict[str, Any]:
     import joblib
     import numpy as np
+    import sklearn
     from sklearn.ensemble import ExtraTreesClassifier
     from sklearn.metrics import confusion_matrix
     from sklearn.model_selection import StratifiedGroupKFold
@@ -459,6 +482,12 @@ def train(zip_path: Path, output_dir: Path, folds: int, trees: int, seed: int) -
     report = {
         "schema_version": 1,
         "model": "ExtraTreesClassifier",
+        "artifact_environment": {
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+            "scikit_learn": sklearn.__version__,
+            "joblib": joblib.__version__,
+        },
         "weak_supervision": "Melodia one-part Series 1/3/5/7/9",
         "target_series": list(STAGE_SERIES),
         "inventory": inventory,
@@ -503,10 +532,12 @@ def score_abc(model_path: Path, abc_path: Path) -> dict[str, Any]:
     expected_series = 1.0 + 2.0 * float(probabilities @ np.arange(len(stages)))
     entropy = -sum(float(p) * math.log(float(p) + 1e-12) for p in probabilities) / math.log(len(stages))
     return {
+        **public_level(probabilities),
         "predicted_series": stages[int(probabilities.argmax())],
         "expected_series": round(expected_series, 3),
-        "series_probabilities": {str(stage): round(float(p), 6) for stage, p in zip(stages, probabilities)},
+        "series_support": {str(stage): round(float(p), 6) for stage, p in zip(stages, probabilities)},
         "uncertainty": round(entropy, 6),
+        "uncertainty_kind": "ensemble_vote_entropy",
         "dimension_percentiles": score_dimensions(features, bundle["calibration"]),
         "raw_features": raw_report,
         "warning": "Melodia curriculum estimate, not a certified examination grade",
@@ -518,7 +549,7 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     train_parser = commands.add_parser("train")
     train_parser.add_argument("musicxml_zip", type=Path)
-    train_parser.add_argument("--output", type=Path, default=Path("out/difficulty-melodia-v0"))
+    train_parser.add_argument("--output", type=Path, default=Path("out/difficulty-melodia-v1"))
     train_parser.add_argument("--folds", type=int, default=5)
     train_parser.add_argument("--trees", type=int, default=500)
     train_parser.add_argument("--seed", type=int, default=20260928)

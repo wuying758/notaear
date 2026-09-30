@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import platform
 import re
 from collections import Counter
 from pathlib import Path
@@ -72,7 +73,16 @@ def _metrics(labels, predicted, weights) -> dict[str, float]:
     }
 
 
-def _load_rows(queue_path: Path, annotation_path: Path):
+def _baseline_expected_series(bundle, features: dict[str, float]) -> float:
+    import numpy as np
+
+    names = bundle["feature_names"]
+    vector = np.asarray([[features[name] for name in names]], dtype=np.float32)
+    probabilities = bundle["model"].predict_proba(vector)[0]
+    return 1.0 + 2.0 * float(probabilities @ np.arange(len(probabilities)))
+
+
+def _load_rows(queue_path: Path, annotation_path: Path, baseline_bundle):
     import numpy as np
 
     queue = json.loads(queue_path.read_text(encoding="utf-8"))
@@ -96,8 +106,10 @@ def _load_rows(queue_path: Path, annotation_path: Path):
             "label": label,
             "weight": float(annotation["confidence"]),
             "group": groups[pair["left"]["candidate_id"]],
-            "baseline_difference": (pair["left"]["expected_series"]
-                                    - pair["right"]["expected_series"]),
+            "baseline_difference": (
+                _baseline_expected_series(baseline_bundle, pair["left"]["features"])
+                - _baseline_expected_series(baseline_bundle, pair["right"]["features"])
+            ),
             "listened": annotation.get("listened", {"left": False, "right": False}),
         })
     return queue, annotations, records
@@ -189,8 +201,12 @@ def train(queue_path: Path, annotation_path: Path, baseline_path: Path, output_d
           alpha: float = 0.3, seed: int = 20260928) -> dict[str, Any]:
     import joblib
     import numpy as np
+    import sklearn
 
-    queue, annotations, records = _load_rows(queue_path, annotation_path)
+    baseline_bundle = joblib.load(baseline_path)
+    queue, annotations, records = _load_rows(
+        queue_path, annotation_path, baseline_bundle
+    )
     directional = [record for record in records if record["label"] != 0]
     if len(directional) < 20:
         raise ValueError("at least 20 directional human comparisons are required")
@@ -204,15 +220,21 @@ def train(queue_path: Path, annotation_path: Path, baseline_path: Path, output_d
     baseline_differences = np.asarray([record["baseline_difference"] for record in records])
     hybrid_scores = baseline_differences + alpha * model.decision_function(all_x)
     tie_threshold = _best_tie_threshold(hybrid_scores, all_labels, all_weights)
-    baseline_bundle = joblib.load(baseline_path)
     cross_validation = _cross_validate(records, folds, c, alpha, seed)
     external = _external_order_validation(model, baseline_bundle, queue, alpha, melodia, eyes)
     coefficients = model.named_steps["logisticregression"].coef_[0]
     top = sorted(zip(FEATURE_NAMES, coefficients), key=lambda item: abs(item[1]), reverse=True)
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "model": "Melodia baseline + human pairwise logistic correction",
-        "source_model_version": queue["model_version"],
+        "artifact_environment": {
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+            "scikit_learn": sklearn.__version__,
+            "joblib": joblib.__version__,
+        },
+        "baseline_model": str(baseline_path),
+        "annotation_queue_model_version": queue["model_version"],
         "annotations": {
             "total": len(annotations),
             "directional": len(directional),
@@ -235,7 +257,7 @@ def train(queue_path: Path, annotation_path: Path, baseline_path: Path, output_d
         ],
     }
     bundle = {
-        "schema_version": 1,
+        "schema_version": 2,
         "model": model,
         "feature_names": FEATURE_NAMES,
         "alpha": alpha,
@@ -256,12 +278,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--annotations", type=Path,
                         default=Path("data/annotations/difficulty_pairs.jsonl"))
     parser.add_argument("--baseline", type=Path,
-                        default=Path("out/difficulty-melodia-v0/difficulty_model.joblib"))
+                        default=Path("out/difficulty-melodia-v1/difficulty_model.joblib"))
     parser.add_argument("--melodia", type=Path,
                         default=Path("data/reference_books/raw/melodia/Cole-Lewis-1904-xml.zip"))
     parser.add_argument("--eyes", type=Path,
                         default=Path("data/reference_books/raw/eyes_and_ears/Crowell-2004-xml.zip"))
-    parser.add_argument("--output", type=Path, default=Path("out/difficulty-human-v1"))
+    parser.add_argument("--output", type=Path, default=Path("out/difficulty-human-v2"))
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--c", type=float, default=0.1)
     parser.add_argument("--alpha", type=float, default=0.3)

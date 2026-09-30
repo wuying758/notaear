@@ -3,7 +3,15 @@ import unittest
 import numpy as np
 
 from notaear.label_difficulty import Candidate, _public_pair, _select_pairs
-from notaear.train_pairwise_difficulty import _best_tie_threshold
+from notaear.train_pairwise_difficulty import (
+    _baseline_expected_series,
+    _best_tie_threshold,
+)
+
+
+class FixedProbabilityModel:
+    def predict_proba(self, matrix):
+        return np.asarray([[0.1, 0.2, 0.4, 0.2, 0.1] for _ in matrix])
 
 
 def candidate(index, source, expected, uncertainty):
@@ -19,6 +27,16 @@ def candidate(index, source, expected, uncertainty):
 
 
 class LabelDifficultyTest(unittest.TestCase):
+    def test_pairwise_baseline_is_recomputed_from_selected_model(self):
+        from notaear.train_difficulty import FEATURE_NAMES
+
+        bundle = {
+            "feature_names": FEATURE_NAMES,
+            "model": FixedProbabilityModel(),
+        }
+        features = {name: 0.0 for name in FEATURE_NAMES}
+        self.assertEqual(_baseline_expected_series(bundle, features), 5.0)
+
     def test_queue_is_deterministic_and_has_unique_pairs(self):
         candidates = []
         for index in range(160):

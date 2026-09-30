@@ -423,7 +423,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     prepare = commands.add_parser("prepare", help="select an active-learning queue")
-    prepare.add_argument("--model", type=Path, default=Path("out/difficulty-melodia-v0/difficulty_model.joblib"))
+    prepare.add_argument("--model", type=Path, default=Path("out/difficulty-melodia-v1/difficulty_model.joblib"))
     prepare.add_argument("--melodia", type=Path, default=Path("data/reference_books/raw/melodia/Cole-Lewis-1904-xml.zip"))
     prepare.add_argument("--eyes", type=Path, default=Path("data/reference_books/raw/eyes_and_ears/Crowell-2004-xml.zip"))
     prepare.add_argument("--output", type=Path, default=Path("out/active-label-v0/queue.json"))

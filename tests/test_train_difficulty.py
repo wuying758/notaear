@@ -3,6 +3,7 @@ from xml.etree import ElementTree as ET
 
 from notaear.train_difficulty import (
     FEATURE_NAMES, _percentile, _pitch_signature, extract_musicxml_features,
+    public_level,
 )
 
 
@@ -66,6 +67,19 @@ class DifficultyTrainingTests(unittest.TestCase):
         self.assertEqual(_percentile(0.0, quantiles), 0.0)
         self.assertEqual(_percentile(1.0, quantiles), 80.0)
         self.assertEqual(_percentile(1.0, quantiles, invert=True), 0.0)
+
+    def test_public_api_is_l1_to_l5_and_reports_borderline(self):
+        clear = public_level([0.02, 0.08, 0.75, 0.10, 0.05])
+        self.assertEqual(clear["level"], "L3")
+        self.assertEqual(clear["alternative"], "L4")
+        self.assertFalse(clear["borderline"])
+        self.assertFalse(clear["confidence_calibrated"])
+        self.assertEqual(set(clear["level_support"]), {"L1", "L2", "L3", "L4", "L5"})
+
+        boundary = public_level([0.02, 0.08, 0.44, 0.40, 0.06])
+        self.assertEqual(boundary["level"], "L3")
+        self.assertEqual(boundary["alternative"], "L4")
+        self.assertTrue(boundary["borderline"])
 
 
 if __name__ == "__main__":

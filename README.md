@@ -11,7 +11,8 @@ NotaEar 是与旧 `deepear-main` 隔离的 NotaGen-style 单声部视唱生成�
 - 可恢复的版本化 checkpoint 与 ABC continuation 推理入口；
 - 作品级去重、无泄漏划分和按 epoch 选调的训练 manifest；
 - 来源加权、作品级同调、分片局部读取和动态 padding 的 PyTorch DataLoader；
-- 五维、无总分的视唱难度特征；
+- 大小调、中古调式、三类小调与宫商角徵羽的保守候选分析；
+- 五维视唱难度特征，以及面向用户的暂定 L1--L5 支持度接口；
 - 单元测试与真实 `v-yidiao` 抽样入口。
 
 计划中的数据流：
@@ -81,5 +82,5 @@ Melodia 弱监督难度模型：
 ```bash
 PYTHONPATH=src python -m notaear.train_difficulty train \
   data/reference_books/raw/melodia/Cole-Lewis-1904-xml.zip \
-  --output out/difficulty-melodia-v0
+  --output out/difficulty-melodia-v1
 ```
