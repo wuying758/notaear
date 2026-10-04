@@ -45,6 +45,15 @@ class ABCValidationTests(unittest.TestCase):
             ["pickup", "full", "pickup_completion"],
         )
 
+    def test_unmatched_pickup_is_rejected(self):
+        report = validate_abc(
+            "X:1\nM:4/4\nL:1/8\nK:G\n"
+            "D2 | G2 A2 B2 c2 | d2 c2 B2 G2 |]\n"
+        )
+        self.assertFalse(report.accepted)
+        self.assertFalse(report.rhythm_valid)
+        self.assertIn("pickup_unmatched", {issue.code for issue in report.issues})
+
     def test_inline_key_change_updates_final_tonic(self):
         report = validate_abc(
             "X:1\nM:4/4\nL:1/8\nK:C\n"

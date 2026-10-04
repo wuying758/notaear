@@ -70,6 +70,8 @@ PYTHONPATH=notaear/src python -m notaear.train \
 指标定义见 [`docs/DIFFICULTY.md`](docs/DIFFICULTY.md)。
 调式识别的版本化测试集与指标见
 [`docs/TONALITY_BENCHMARK.md`](docs/TONALITY_BENCHMARK.md)。
+真实谱例的调性盲标与重复样本审计见
+[`docs/TONALITY_LABELING.md`](docs/TONALITY_LABELING.md)。
 模型设计见 [`docs/MODEL.md`](docs/MODEL.md)。
 训练数据 manifest 的字段、筛选边界和复现命令见
 [`docs/DATA_MANIFEST.md`](docs/DATA_MANIFEST.md)。

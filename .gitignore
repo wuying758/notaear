@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.playwright-cli/
 *.egg-info/
 out/
 data/reference_books/raw/

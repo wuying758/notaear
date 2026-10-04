@@ -42,6 +42,9 @@ notaear-tonality-benchmark evaluate \
 - modulation boundary F1；
 - 标注者一致性。
 
+当前盲标入口、字段定义与重复样本一致性审计见
+[`TONALITY_LABELING.md`](TONALITY_LABELING.md)。
+
 ## declared-v1 真实谱弱标签集
 
 `declared-v1.jsonl` 只保存正式 manifest test split 中的安全定位信息和原始 `K:`

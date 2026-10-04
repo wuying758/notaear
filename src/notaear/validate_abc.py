@@ -387,6 +387,15 @@ def validate_abc(
                 index,
             ))
 
+    if first_pickup and statuses[-1] != "pickup_completion":
+        rhythm_errors.add(len(statuses) - 1)
+        issues.append(ValidationIssue(
+            "error",
+            "pickup_unmatched",
+            "first-bar pickup is not complemented by the final bar",
+            len(statuses) - 1,
+        ))
+
     for index in range(len(document.bars)):
         bars.append(BarTiming(
             index=index,

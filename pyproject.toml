@@ -27,6 +27,7 @@ notaear-build-manifest = "notaear.build_manifest:main"
 notaear-data-info = "notaear.dataset:main"
 notaear-train = "notaear.train:main"
 notaear-tonality-benchmark = "notaear.tonality_benchmark:main"
+notaear-label-tonality = "notaear.label_tonality:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
